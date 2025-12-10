@@ -2,12 +2,24 @@ from typing import Optional, Tuple
 
 import torch
 
+# Check if running on AMD GPU (HIP/ROCm)
+_is_hip = torch.version.hip is not None
+
 try:
     from sgl_kernel import flashmla_ops  # triggers TORCH extension registration
 except Exception as _e:
     _flashmla_import_error = _e
 else:
     _flashmla_import_error = None
+
+# Import Triton-based sparse attention for AMD GPUs
+_triton_sparse_available = False
+if _is_hip:
+    try:
+        from sgl_kernel.triton_flash_mla_sparse import triton_flash_mla_sparse_fwd
+        _triton_sparse_available = True
+    except ImportError:
+        pass
 
 _IMPORT_ERROR = ImportError(
     "Failed to load sgl_kernel.flashmla_ops extension. Ensure CUDA Driver >= 12.4"
@@ -149,6 +161,11 @@ def flash_mla_sparse_fwd(
         - max_logits:  [s_q, h_q], float
         - lse: [s_q, h_q], float, 2-based log-sum-exp
     """
+    # Use Triton kernel on AMD GPUs
+    if _is_hip and _triton_sparse_available:
+        return triton_flash_mla_sparse_fwd(q, kv, indices, sm_scale, d_v)
+
+    # Use CUDA kernel on NVIDIA GPUs
     results = torch.ops.sgl_kernel.sparse_prefill_fwd.default(
         q, kv, indices, sm_scale, d_v
     )
