@@ -3,7 +3,8 @@
 ## Summary
 This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alternative backend for NSA in sglang. The implementation is optimized for AMD GPUs (MI355, CDNA4) and provides:
 - **1.3x speedup** in offline kernel benchmarks
-- **1.4x speedup** for 16K input in end-to-end serving (TTFT)
+- **1.17x TTFT speedup** for 8K input in end-to-end serving
+- **1.07x output throughput** improvement for 8K input
 
 ## Performance Results
 
@@ -17,13 +18,31 @@ This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alte
 | 8192  | 11.13 ms | 8.57 ms | **1.30x** |
 | 16384 | 22.29 ms | 17.24 ms| **1.29x** |
 
-### End-to-End Serving Benchmark (DeepSeek-V3.2-Exp, TP=8, SGLANG_NSA_FUSE_TOPK=false)
+### End-to-End Serving Benchmark (DeepSeek-V3.2-Exp, TP=8, 100 prompts, 128 output tokens)
+
+**Time to First Token (TTFT) - Lower is better:**
 
 | Input Length | TileLang TTFT | Triton TTFT | Speedup |
 |--------------|---------------|-------------|---------|
-| 8K           | 1988 ms       | 2017 ms     | 0.99x   |
-| 16K          | 2907 ms       | 2086 ms     | **1.39x** |
-| 32K          | 3895 ms       | 3690 ms     | **1.06x** |
+| 8K           | 40526 ms      | 34551 ms    | **1.17x** |
+| 16K          | 38676 ms      | 34692 ms    | **1.11x** |
+| 32K          | 104561 ms     | 109868 ms   | 0.95x   |
+
+**Output Token Throughput (OTPS) - Higher is better:**
+
+| Input Length | TileLang OTPS | Triton OTPS | Speedup |
+|--------------|---------------|-------------|---------|
+| 8K           | 30.06 tok/s   | 32.25 tok/s | **1.07x** |
+| 16K          | 29.26 tok/s   | 29.94 tok/s | **1.02x** |
+| 32K          | 18.15 tok/s   | 17.70 tok/s | 0.97x   |
+
+**Inter-Token Latency (ITL) - Lower is better:**
+
+| Input Length | TileLang ITL | Triton ITL | Improvement |
+|--------------|--------------|------------|-------------|
+| 8K           | 1911 ms      | 1829 ms    | **1.04x** |
+| 16K          | 2098 ms      | 2037 ms    | **1.03x** |
+| 32K          | 3145 ms      | 3122 ms    | **1.01x** |
 
 Note: Performance tested with `SGLANG_NSA_FUSE_TOPK=false` which is required for correct inference accuracy.
 
@@ -186,6 +205,8 @@ return out.squeeze(0)  # Remove batch dimension to return [s_q, h_q, d_v]
 ## Technical Notes
 
 - Kernel-level benchmark shows consistent 1.3x speedup across all sequence lengths
-- Performance advantage is most significant for medium-length inputs (16K shows 1.4x speedup)
+- End-to-end serving shows best improvement for shorter inputs (8K: 1.17x TTFT speedup)
+- At 32K input, performance is comparable between backends
 - For accurate benchmark results, run a warmup first (first run includes Triton autotune compilation)
 - **Important**: `SGLANG_NSA_FUSE_TOPK=false` is required for correct model inference accuracy
+- Benchmark config: 100 prompts, 128 output tokens, request rate = inf
