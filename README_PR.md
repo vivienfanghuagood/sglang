@@ -25,27 +25,29 @@ Additionally, this PR includes a **decode optimization** that batches topk calls
 
 **Time to First Token (TTFT) - Lower is better:**
 
-| Input Length | TileLang TTFT | Triton TTFT | Speedup |
-|--------------|---------------|-------------|---------|
-| 8K(rate=32)            | 32633 ms      | 31273 ms    | **1.04x** |
-| 16K(rate=32)          | 35650 ms      | 32546 ms    | **1.10x** |
-| 32K(rate=2)          | 27091 ms     | 22594 ms   | **1.19x**  |
+| Input Length | Baseline (TileLang) | Triton Sparse | Speedup |
+|--------------|---------------------|---------------|---------|
+| 8K (n=100, rate=32)  | 32633 ms | 31273 ms | **1.04x** |
+| 16K (n=100, rate=32) | 35650 ms | 32546 ms | **1.10x** |
+| 32K (n=20, rate=2)   | 27091 ms | 22594 ms | **1.20x** |
 
 **Output Token Throughput (OTPS) - Higher is better:**
 
-| Input Length | TileLang OTPS | Triton OTPS | Triton+BatchedTopK | Speedup vs TileLang |
-|--------------|---------------|-------------|---------------------|---------------------|
-| 8K(rate=32)  | 32.07 tok/s   | 32.90 tok/s | **37.53 tok/s**     | **1.17x** |
-| 16K(rate=32) | 29.64 tok/s   | 30.67 tok/s | **34.12 tok/s**     | **1.15x** |
+| Input Length | Baseline (TileLang) | Triton Sparse | Triton + Batched TopK | Speedup |
+|--------------|---------------------|---------------|------------------------|---------|
+| 8K (n=100, rate=32)  | 32.07 tok/s | 32.90 tok/s | **37.53 tok/s** | **1.17x** |
+| 16K (n=100, rate=32) | 29.64 tok/s | 30.67 tok/s | **34.12 tok/s** | **1.15x** |
+| 32K (n=20, rate=2)   | 12.07 tok/s | 13.28 tok/s | **13.94 tok/s** | **1.15x** |
 
 **Inter-Token Latency (ITL) - Lower is better:**
 
-| Input Length | TileLang ITL | Triton ITL | Triton+BatchedTopK | Improvement |
-|--------------|--------------|------------|---------------------|-------------|
-| 8K(rate=32)  | 1826 ms      | 1788 ms    | **1530 ms**         | **1.19x** |
-| 16K(rate=32) | 2067 ms      | 1997 ms    | **1782 ms**         | **1.16x** |
+| Input Length | Baseline (TileLang) | Triton Sparse | Triton + Batched TopK | Improvement |
+|--------------|---------------------|---------------|------------------------|-------------|
+| 8K (n=100, rate=32)  | 1826 ms | 1788 ms | **1530 ms** | **1.19x** |
+| 16K (n=100, rate=32) | 2067 ms | 1997 ms | **1782 ms** | **1.16x** |
+| 32K (n=20, rate=2)   | 905 ms  | 835 ms  | **784 ms**  | **1.15x** |
 
-Note: Performance tested with `SGLANG_NSA_FUSE_TOPK=false`.
+Note: Performance tested with `SGLANG_NSA_FUSE_TOPK=false`. `n` = num_prompts.
 
 ## Decode Optimization: Batched TopK
 
