@@ -20,7 +20,7 @@ This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alte
 | Input Length | TileLang TTFT | Triton TTFT | Speedup |
 |--------------|---------------|-------------|---------|
 | 8K           | 7802 ms       | 7312 ms     | **1.07x** |
-| 16K          | 7238 ms       | 741 ms      | **9.8x** |
+<!-- | 16K          | 7238 ms       | 741 ms      | **9.8x** | -->
 | 32K          | 5324 ms       | 3628 ms     | **1.5x** |
 
 ## How to Reproduce
