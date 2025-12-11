@@ -4,11 +4,10 @@
 This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alternative backend for NSA in sglang. The implementation is optimized for AMD GPUs (MI355, CDNA4) and provides:
 - **1.3x speedup** in offline kernel benchmarks
 - **1.04-1.10x TTFT speedup** for 8K-16K input in end-to-end serving
-- **1.03x output throughput** improvement for 8K-16K input
 
-Additionally, this PR includes a **decode optimization** that batches topk calls:
-- **14x reduction** in topk overhead during decode
-- **~72ms saved** per decode step
+Additionally, this PR includes a **decode optimization** that batches topk calls in `nsa_indexer.py`:
+- Reduces topk calls from 976 to 61 per decode step (16x reduction)
+- **Up to 17% OTPS improvement** in end-to-end serving
 
 ## Performance Results
 
@@ -34,69 +33,28 @@ Additionally, this PR includes a **decode optimization** that batches topk calls
 
 **Output Token Throughput (OTPS) - Higher is better:**
 
-| Input Length | TileLang OTPS | Triton OTPS | Speedup |
-|--------------|---------------|-------------|---------|
-| 8K(rate=32)           | 32.07 tok/s   | 32.90 tok/s | **1.03x** |
-| 16K(rate=32)          | 29.64 tok/s   | 30.67 tok/s | **1.03x** |
-| 32K(rate=2)          | 12.07 tok/s   | 13.28 tok/s | **1.1x**   |
+| Input Length | TileLang OTPS | Triton OTPS | Triton+BatchedTopK | Speedup vs TileLang |
+|--------------|---------------|-------------|---------------------|---------------------|
+| 8K(rate=32)  | 32.07 tok/s   | 32.90 tok/s | **37.53 tok/s**     | **1.17x** |
+| 16K(rate=32) | 29.64 tok/s   | 30.67 tok/s | **34.12 tok/s**     | **1.15x** |
 
 **Inter-Token Latency (ITL) - Lower is better:**
 
-| Input Length | TileLang ITL | Triton ITL | Improvement |
-|--------------|--------------|------------|-------------|
-| 8K(rate=32)           | 1826 ms      | 1788 ms    | **1.02x** |
-| 16K(rate=32)          | 2067 ms      | 1997 ms    | **1.04x** |
-| 32K(rate=2)          | 905 ms      | 835 ms    | **1.08x**   |
+| Input Length | TileLang ITL | Triton ITL | Triton+BatchedTopK | Improvement |
+|--------------|--------------|------------|---------------------|-------------|
+| 8K(rate=32)  | 1826 ms      | 1788 ms    | **1530 ms**         | **1.19x** |
+| 16K(rate=32) | 2067 ms      | 1997 ms    | **1782 ms**         | **1.16x** |
 
 Note: Performance tested with `SGLANG_NSA_FUSE_TOPK=false`.
 
 ## Decode Optimization: Batched TopK
 
-### Problem Analysis
+Profiling showed `aten::topk` was the largest decode bottleneck (30.5% of CUDA time, 976 calls/step). 
 
-When profiling the decode stage with `bench_one_batch`, we discovered that `aten::topk` is the largest bottleneck:
-
-| Operation | Time (ms) | % of CUDA Time | Count |
-|-----------|-----------|----------------|-------|
-| aten::topk | 74.7 | 30.5% | 976 |
-| Triton kernels (MoE) | ~45 | ~18% | - |
-| Sparse Attention | ~16 | ~6.5% | - |
-
-The high overhead comes from:
-- **976 topk calls per decode step** (61 layers × 16 batch items)
-- Each call has ~0.08ms latency, but the cumulative overhead is ~78ms
-
-### Solution: Batched TopK
-
-Instead of calling topk individually for each batch item:
-```python
-# Original: 976 topk calls per step
-for i in range(batch_size):  # 16 items
-    score = fp8_index(...)
-    topk_indices = score.topk(...)  # Individual call
-```
-
-We collect scores and do ONE batched topk per layer:
-```python
-# Optimized: 61 topk calls per step
-all_scores = torch.full((batch_size, max_seq_len), -inf)
-for i in range(batch_size):
-    score = fp8_index(...)  # fp8_index must remain per-item due to kernel constraint
-    all_scores[i] = score
-topk_indices = all_scores.topk(...)  # Single batched call
-```
-
-### Expected Improvement
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| TopK calls/step | 976 | 61 | **16x fewer** |
-| TopK time | ~78ms | ~6ms | **~72ms saved** |
-| TopK % of decode | 30.5% | ~2.5% | **-28%** |
-
-### Limitation
-
-The `fp8_index` tilelang kernel requires `h >= 32`, but with TP=8, `h = 64/8 = 8`. This prevents batching the `fp8_index` call itself. However, batching only the topk call still provides significant improvement.
+**Solution**: Batch topk calls per layer instead of per batch item.
+- **Before**: 976 topk calls/step (61 layers × 16 batch)
+- **After**: 61 topk calls/step (1 batched call per layer)
+- **Result**: ~16x fewer kernel launches, 15-19% ITL improvement
 
 ## How to Reproduce
 
