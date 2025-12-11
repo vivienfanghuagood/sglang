@@ -29,11 +29,14 @@ LOG2E = math.log2(math.e)  # 1.44269504
         # Configs for small h_q (tensor parallelism, e.g., h_q=16)
         triton.Config({'BLOCK_TOPK': 64, 'BLOCK_H': 16, 'TILE_D': 64}, num_warps=4, num_stages=1),
         triton.Config({'BLOCK_TOPK': 64, 'BLOCK_H': 16, 'TILE_D': 64}, num_warps=8, num_stages=1),
+        triton.Config({'BLOCK_TOPK': 128, 'BLOCK_H': 16, 'TILE_D': 64}, num_warps=8, num_stages=1),
         # Configs for medium h_q (h_q=32-64)
         triton.Config({'BLOCK_TOPK': 64, 'BLOCK_H': 32, 'TILE_D': 64}, num_warps=8, num_stages=1),
+        triton.Config({'BLOCK_TOPK': 128, 'BLOCK_H': 32, 'TILE_D': 64}, num_warps=8, num_stages=1),
         triton.Config({'BLOCK_TOPK': 64, 'BLOCK_H': 64, 'TILE_D': 64}, num_warps=8, num_stages=1),
         # Configs for large h_q (h_q>=64)
         triton.Config({'BLOCK_TOPK': 64, 'BLOCK_H': 128, 'TILE_D': 64}, num_warps=8, num_stages=1),
+        triton.Config({'BLOCK_TOPK': 128, 'BLOCK_H': 64, 'TILE_D': 64}, num_warps=8, num_stages=1),
     ],
     key=['topk'],  # Only key on topk to avoid recompilation for different s_q/h_q
 )
