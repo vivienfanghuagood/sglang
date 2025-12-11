@@ -204,9 +204,11 @@ return out.squeeze(0)  # Remove batch dimension to return [s_q, h_q, d_v]
 
 ## Technical Notes
 
-- Kernel-level benchmark shows consistent 1.3x speedup across all sequence lengths
-- End-to-end serving shows best improvement for shorter inputs (8K: 1.17x TTFT speedup)
-- At 32K input, performance is comparable between backends
+- **Kernel-level benchmark** shows consistent **1.3x speedup** across all sequence lengths
+- **End-to-end serving** shows:
+  - Best improvement for shorter inputs (8K-16K: 1.11-1.17x TTFT speedup)
+  - At 32K input with high concurrency, TileLang is slightly faster (~1.05x)
+- The 32K regression is due to serving framework overhead, not kernel efficiency
 - For accurate benchmark results, run a warmup first (first run includes Triton autotune compilation)
 - **Important**: `SGLANG_NSA_FUSE_TOPK=false` is required for correct model inference accuracy
 - Benchmark config: 100 prompts, 128 output tokens, request rate = inf
