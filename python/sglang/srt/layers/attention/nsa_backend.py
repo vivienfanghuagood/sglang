@@ -821,6 +821,7 @@ class NativeSparseAttnBackend(AttentionBackend):
         )
         return o
 
+    
     def _forward_tilelang(
         self,
         q_all: torch.Tensor,
@@ -830,6 +831,8 @@ class NativeSparseAttnBackend(AttentionBackend):
         sm_scale: float,
     ) -> torch.Tensor:
         from sglang.srt.layers.attention.nsa.tilelang_kernel import tilelang_sparse_fwd
+        
+
 
         return tilelang_sparse_fwd(
             q=q_all,

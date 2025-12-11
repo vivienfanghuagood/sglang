@@ -1,7 +1,9 @@
 # PR: Add triton_sparse backend for NSA (Native Sparse Attention)
 
 ## Summary
-This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alternative backend for NSA in sglang. The implementation is optimized for AMD GPUs (MI355, CDNA4) and provides **1.3x speedup** over TileLang in kernel benchmarks.
+This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alternative backend for NSA in sglang. The implementation is optimized for AMD GPUs (MI355, CDNA4) and provides:
+- **1.3x speedup** in offline kernel benchmarks
+- **1.4x speedup** for 16K input in end-to-end serving (TTFT)
 
 ## Performance Results
 
@@ -15,13 +17,15 @@ This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alte
 | 8192  | 11.13 ms | 8.57 ms | **1.30x** |
 | 16384 | 22.29 ms | 17.24 ms| **1.29x** |
 
-### End-to-End Serving Benchmark (DeepSeek-V3.2-Exp, TP=8)
+### End-to-End Serving Benchmark (DeepSeek-V3.2-Exp, TP=8, SGLANG_NSA_FUSE_TOPK=false)
 
 | Input Length | TileLang TTFT | Triton TTFT | Speedup |
 |--------------|---------------|-------------|---------|
-| 8K           | 7802 ms       | 7312 ms     | **1.07x** |
-| 32K          | 5324 ms       | 3628 ms     | **1.5x** |
-<!-- | 16K          | 7238 ms       | 741 ms      | **9.8x** | -->
+| 8K           | 1988 ms       | 2017 ms     | 0.99x   |
+| 16K          | 2907 ms       | 2086 ms     | **1.39x** |
+| 32K          | 3895 ms       | 3690 ms     | **1.06x** |
+
+Note: Performance tested with `SGLANG_NSA_FUSE_TOPK=false` which is required for correct inference accuracy.
 
 ## How to Reproduce
 
@@ -43,6 +47,7 @@ pip install -e "sgl-kernel"
 ### 3. Start the server with TileLang backend
 
 ```bash
+export SGLANG_NSA_FUSE_TOPK=false
 export SGLANG_NSA_KV_CACHE_STORE_FP8=false
 export SGLANG_NSA_USE_REAL_INDEXER=true
 export SGLANG_NSA_USE_TILELANG_PREFILL=true
@@ -78,6 +83,7 @@ python -m sglang.bench_serving \
 # Stop previous server first
 pkill -f sglang
 
+export SGLANG_NSA_FUSE_TOPK=false
 export SGLANG_NSA_KV_CACHE_STORE_FP8=false
 export SGLANG_NSA_USE_REAL_INDEXER=true
 export SGLANG_NSA_USE_TILELANG_PREFILL=true
@@ -142,6 +148,16 @@ from sgl_kernel.triton_flash_mla_sparse import triton_flash_mla_sparse_fwd
 NSA_CHOICES = ["flashmla_prefill", "flashmla_decode", "fa3", "tilelang", "aiter", "triton_sparse"]
 ```
 
+### 5. BUGFIX: `python/sglang/srt/layers/attention/nsa/tilelang_kernel.py`
+```python
+# Before (bug - returns 4D tensor instead of 3D):
+return kernel(q.unsqueeze(0), kv.unsqueeze(0), indices.unsqueeze(0))
+
+# After (fixed - returns correct 3D tensor):
+out = kernel(q.unsqueeze(0), kv.unsqueeze(0), indices.unsqueeze(0))
+return out.squeeze(0)  # Remove batch dimension to return [s_q, h_q, d_v]
+```
+
 ## Key Implementation Details
 
 1. **Kernel Selection**: Uses optimized kernel for `topk >= 256` (removed h_q >= 64 restriction to support TP parallelism)
@@ -158,9 +174,18 @@ NSA_CHOICES = ["flashmla_prefill", "flashmla_decode", "fa3", "tilelang", "aiter"
    - num_stages: 1 (optimized for AMD)
    - num_warps: 4, 8
 
+## Environment Variables
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `SGLANG_NSA_FUSE_TOPK` | `false` | **Required for correct inference accuracy**. Disables fused topk. |
+| `SGLANG_NSA_KV_CACHE_STORE_FP8` | `false` | Disables FP8 KV cache storage for better precision. |
+| `SGLANG_NSA_USE_REAL_INDEXER` | `true` | Uses real indexer for NSA. |
+| `SGLANG_NSA_USE_TILELANG_PREFILL` | `true` | Enables TileLang prefill optimization. |
+
 ## Technical Notes
 
-- The 9.8x speedup at 16K input in serving is partially due to autotune warming up during the first run
 - Kernel-level benchmark shows consistent 1.3x speedup across all sequence lengths
-- Performance scales linearly with sequence length as expected
-- For accurate benchmark results, run the benchmark twice (first run includes autotune compilation overhead)
+- Performance advantage is most significant for medium-length inputs (16K shows 1.4x speedup)
+- For accurate benchmark results, run a warmup first (first run includes Triton autotune compilation)
+- **Important**: `SGLANG_NSA_FUSE_TOPK=false` is required for correct model inference accuracy

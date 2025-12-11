@@ -784,4 +784,5 @@ def tilelang_sparse_fwd(
         kernel = sparse_attention_fwd_kernel_v2(
             num_heads, d_v, tail_dim, topk, sm_scale=sm_scale
         )
-    return kernel(q.unsqueeze(0), kv.unsqueeze(0), indices.unsqueeze(0))  # type: ignore
+    out = kernel(q.unsqueeze(0), kv.unsqueeze(0), indices.unsqueeze(0))  # type: ignore
+    return out.squeeze(0)  # Remove batch dimension to return [s_q, h_q, d_v]
