@@ -1,17 +1,27 @@
-# PR: Add triton_sparse backend for NSA (Native Sparse Attention)
+# PR: NSA Optimization for DeepSeek-V3.2 on AMD GPUs
 
 ## Summary
-This PR adds a Triton-based sparse attention kernel (`triton_sparse`) as an alternative backend for NSA in sglang. The implementation is optimized for AMD GPUs (MI355, CDNA4) and provides:
-- **1.3x speedup** in offline kernel benchmarks
-- **1.04-1.10x TTFT speedup** for 8K-16K input in end-to-end serving
 
-Additionally, this PR includes a **decode optimization** that batches topk calls in `nsa_indexer.py`:
-- Reduces topk calls from 976 to 61 per decode step (16x reduction)
-- **Up to 17% OTPS improvement** in end-to-end serving
+This PR optimizes NSA (Native Sparse Attention) performance for DeepSeek-V3.2 on AMD GPUs (MI355, CDNA4).
+
+### Optimizations
+
+| Component | Optimization | Description |
+|-----------|--------------|-------------|
+| **NSA_Optim.** | Triton Sparse Attention | Triton-based sparse attention kernel for prefill/decode |
+| **Indexer_Optim.** | Batched TopK | Batch topk calls per layer (976 → 61 calls/step) |
+
+### Key Results
+
+| Metric | Baseline → Optimized | Improvement |
+|--------|----------------------|-------------|
+| **TTFT** (8K-32K) | 27-33s → 22-31s | **1.04-1.20x** |
+| **OTPS** (8K-32K) | 12-32 tok/s → 14-38 tok/s | **1.15-1.17x** |
+| **ITL** (8K-32K) | 905-2067ms → 784-1782ms | **1.15-1.19x** |
 
 ## Performance Results
 
-### Offline Kernel Benchmark (TP=8, h_q=16, topk=2048)
+<!-- ### Offline Kernel Benchmark (TP=8, h_q=16, topk=2048)
 
 | s_q   | TileLang | Triton  | Speedup |
 |-------|----------|---------|---------|
@@ -19,13 +29,13 @@ Additionally, this PR includes a **decode optimization** that batches topk calls
 | 2048  | 2.80 ms  | 2.15 ms | **1.30x** |
 | 4096  | 5.57 ms  | 4.29 ms | **1.30x** |
 | 8192  | 11.13 ms | 8.57 ms | **1.30x** |
-| 16384 | 22.29 ms | 17.24 ms| **1.29x** |
+| 16384 | 22.29 ms | 17.24 ms| **1.29x** | -->
 
 ### End-to-End Serving Benchmark (DeepSeek-V3.2-Exp, TP=8, 100 prompts, 128 output tokens, rate=32)
 
 **Time to First Token (TTFT) - Lower is better:**
 
-| Input Length | Baseline (TileLang) | Triton Sparse | Speedup |
+| Input Length | Baseline (TileLang) | NSA_Optim.| Speedup |
 |--------------|---------------------|---------------|---------|
 | 8K (n=100, rate=32)  | 32633 ms | 31273 ms | **1.04x** |
 | 16K (n=100, rate=32) | 35650 ms | 32546 ms | **1.10x** |
@@ -33,7 +43,7 @@ Additionally, this PR includes a **decode optimization** that batches topk calls
 
 **Output Token Throughput (OTPS) - Higher is better:**
 
-| Input Length | Baseline (TileLang) | Triton Sparse | Triton + Batched TopK | Speedup |
+| Input Length | Baseline (TileLang) | NSA_Optim.|NSA_Optim. + Indexer_Optm. | Speedup |
 |--------------|---------------------|---------------|------------------------|---------|
 | 8K (n=100, rate=32)  | 32.07 tok/s | 32.90 tok/s | **37.53 tok/s** | **1.17x** |
 | 16K (n=100, rate=32) | 29.64 tok/s | 30.67 tok/s | **34.12 tok/s** | **1.15x** |
@@ -41,7 +51,7 @@ Additionally, this PR includes a **decode optimization** that batches topk calls
 
 **Inter-Token Latency (ITL) - Lower is better:**
 
-| Input Length | Baseline (TileLang) | Triton Sparse | Triton + Batched TopK | Improvement |
+| Input Length | Baseline (TileLang) | NSA_Optim.|NSA_Optim. + Indexer_Optm. | Improvement |
 |--------------|---------------------|---------------|------------------------|-------------|
 | 8K (n=100, rate=32)  | 1826 ms | 1788 ms | **1530 ms** | **1.19x** |
 | 16K (n=100, rate=32) | 2067 ms | 1997 ms | **1782 ms** | **1.16x** |
@@ -49,7 +59,7 @@ Additionally, this PR includes a **decode optimization** that batches topk calls
 
 Note: Performance tested with `SGLANG_NSA_FUSE_TOPK=false`. `n` = num_prompts.
 
-## Decode Optimization: Batched TopK
+## Decode Optimization: Indexer Optimization(Batch TopK)
 
 Profiling showed `aten::topk` was the largest decode bottleneck (30.5% of CUDA time, 976 calls/step). 
 
