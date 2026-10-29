@@ -89,7 +89,7 @@ def _should_force_native_rope() -> bool:
     # the fused RoPE entry point is unavailable there. Queried lazily -- reading
     # device properties at import time would initialise a HIP context in every
     # process that merely imports this module.
-    return is_gfx1201_supported() or (
+    return (
         publish_role() is not None
         and get_exec().deterministic.rl_on_policy_target is not None
     )
