@@ -115,10 +115,12 @@ _shuffle_moe_gfx1250 = (
     and get_bool_env_var("SGLANG_MOE_SHUFFLE_GFX1250", "true")
 )
 
+dynamic_mxfp4_quant = None
 if _is_hip:
-    from aiter.ops.triton.quant import dynamic_mxfp4_quant
-else:
-    dynamic_mxfp4_quant = None
+    try:
+        from aiter.ops.triton.quant import dynamic_mxfp4_quant
+    except ImportError:
+        pass
 
 OCP_MX_BLOCK_SIZE = 32
 
