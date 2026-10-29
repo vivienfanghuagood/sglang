@@ -23,7 +23,7 @@ Three lines are tested on each arch, reported separately:
 |---|---|
 | `main` | upstream `main` as is |
 | `amd_march` | upstream `amd_march` as is |
-| `amd_march-plus-prs` | `amd_march` with the open RDNA fixes layered on top (#46910, #46914, #46915, #46967, #46909). Shows what the branch looks like once they merge. |
+| `amd_march-plus-prs` | `amd_march` with the open RDNA fixes layered on top (#46910, #46914, #46915, #46967, #46909, #47299). Shows what the branch looks like once they merge. |
 
 Each job runs in a fresh stock `rocm/pytorch` container with one GPU and without aiter:
 
