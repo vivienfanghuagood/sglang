@@ -1,0 +1,54 @@
+name: rdna-ci
+
+# Daily RDNA smoke test of upstream sgl-project/sglang on self-hosted Radeon runners.
+# Only scheduled and manual runs: no pull_request, pull_request_target or issue_comment
+# triggers, so code from outside this fork never reaches the runners.
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+    inputs:
+      lines:
+        description: "Lines to test (JSON list)"
+        default: '["main", "amd_march", "amd_march-plus-prs"]'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rdna-ci
+  cancel-in-progress: false
+
+jobs:
+  test:
+    if: github.repository == 'vivienfanghuagood/sglang'
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        arch: [gfx1201]
+        line: ${{ fromJSON(github.event.inputs.lines || '["main", "amd_march", "amd_march-plus-prs"]') }}
+    runs-on: [self-hosted, sglang-rdna, "${{ matrix.arch }}"]
+    timeout-minutes: 90
+    name: ${{ matrix.arch }} / ${{ matrix.line }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: rdna-ci
+          persist-credentials: false
+      - name: Build, kernel tests, serve smoke test
+        env:
+          LINE: ${{ matrix.line }}
+        run: |
+          export RDNA_CI_RESULT_DIR="$RUNNER_TEMP/result"
+          "$RDNA_CI_RUN" "$LINE"
+      - name: Report
+        if: always()
+        run: python3 ci/report.py "$RUNNER_TEMP/result" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.arch }}-${{ matrix.line }}
+          path: ${{ runner.temp }}/result/public
+          retention-days: 30
