@@ -4,6 +4,7 @@ import sys
 
 RULES = [
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"), "<ip>"),
+    (re.compile(r"/workspace/[^\s'\"]*"), "<path>"),
     (re.compile(r"/home/[^\s/'\"]+(/[^\s'\"]*)?"), "<path>"),
 ]
 for line in sys.stdin:

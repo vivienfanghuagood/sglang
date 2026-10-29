@@ -12,6 +12,7 @@ import sys
 
 SCRUB = [
     (re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"), "<ip>"),
+    (re.compile(r"/workspace/[^\s'\"]*"), "<path>"),
     (re.compile(r"/home/[^\s/]+"), "/home/<user>"),
     (re.compile(r"/tmp/tmp\.[A-Za-z0-9]+"), "/tmp/<dir>"),
 ]
