@@ -1,10 +1,16 @@
 # Radeon (RDNA) CI for SGLang
 
-[![rdna-ci](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci.yml/badge.svg?branch=rdna-ci)](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci.yml)
+| line | gfx1201 (RDNA4) |
+|---|---|
+| upstream `main` | [![main](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-main.yml/badge.svg?branch=rdna-ci)](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-main.yml) |
+| upstream `amd_march` | [![amd_march](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-amd-march.yml/badge.svg?branch=rdna-ci)](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-amd-march.yml) |
+| `amd_march` + open RDNA PRs (separate, not upstream) | [![amd_march + PRs](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-amd-march-plus-prs.yml/badge.svg?branch=rdna-ci)](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-amd-march-plus-prs.yml) |
 
-This branch only holds a daily test of upstream [sgl-project/sglang](https://github.com/sgl-project/sglang) on Radeon GPUs, run on self-hosted runners. It's the RDNA CI shape proposed in sgl-project/sglang#46900. Results are on the [Actions page](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci.yml): each job's summary has a table, and its `result-*` artifact has the JSON and log tails.
+A badge is red when any step of that line fails: the kernel build, a kernel test, the install, a server failing to start, or no gsm8k score. A red `main` therefore means "RDNA does not work on upstream `main` today", not that the CI is broken.
 
-## What runs, every day at 18:00 UTC
+This branch only holds a daily test of upstream [sgl-project/sglang](https://github.com/sgl-project/sglang) on Radeon GPUs, run on self-hosted runners. It's the RDNA CI shape proposed in sgl-project/sglang#46900. Results are on the Actions page of each workflow: each job's summary has a table, and its `result-*` artifact has the JSON and log tails.
+
+## What runs, every day (18:00, 19:00, 20:00 UTC)
 
 | arch | hardware class |
 |---|---|

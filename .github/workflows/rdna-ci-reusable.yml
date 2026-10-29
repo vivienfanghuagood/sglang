@@ -1,23 +1,15 @@
-name: rdna-ci
+name: rdna-ci-reusable
 
-# Daily RDNA smoke test of upstream sgl-project/sglang on self-hosted Radeon runners.
-# Only scheduled and manual runs: no pull_request, pull_request_target or issue_comment
-# triggers, so code from outside this fork never reaches the runners.
+# Called by the per-line workflows; never triggered on its own.
 on:
-  schedule:
-    - cron: "0 18 * * *"
-  workflow_dispatch:
+  workflow_call:
     inputs:
-      lines:
-        description: "Lines to test (JSON list)"
-        default: '["main", "amd_march", "amd_march-plus-prs"]'
+      line:
+        required: true
+        type: string
 
 permissions:
   contents: read
-
-concurrency:
-  group: rdna-ci
-  cancel-in-progress: false
 
 jobs:
   test:
@@ -27,10 +19,9 @@ jobs:
       max-parallel: 1
       matrix:
         arch: [gfx1201]
-        line: ${{ fromJSON(github.event.inputs.lines || '["main", "amd_march", "amd_march-plus-prs"]') }}
     runs-on: [self-hosted, sglang-rdna, "${{ matrix.arch }}"]
     timeout-minutes: 90
-    name: ${{ matrix.arch }} / ${{ matrix.line }}
+    name: ${{ matrix.arch }} / ${{ inputs.line }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +29,7 @@ jobs:
           persist-credentials: false
       - name: Build, kernel tests, serve smoke test
         env:
-          LINE: ${{ matrix.line }}
+          LINE: ${{ inputs.line }}
         run: |
           export RDNA_CI_RESULT_DIR="$RUNNER_TEMP/result"
           "$RDNA_CI_RUN" "$LINE"
@@ -49,6 +40,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: result-${{ matrix.arch }}-${{ matrix.line }}
+          name: result-${{ matrix.arch }}-${{ inputs.line }}
           path: ${{ runner.temp }}/result/public
           retention-days: 30
+      - name: Verdict
+        run: python3 ci/report.py --verdict "$RUNNER_TEMP/result"

@@ -1,0 +1,22 @@
+name: rdna-ci main
+
+# Daily RDNA smoke test of upstream sglang (main) on self-hosted Radeon runners.
+# Only scheduled and manual runs: no pull_request, pull_request_target or issue_comment
+# triggers, so code from outside this fork never reaches the runners.
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rdna-ci-main
+  cancel-in-progress: false
+
+jobs:
+  rdna:
+    uses: ./.github/workflows/rdna-ci-reusable.yml
+    with:
+      line: main

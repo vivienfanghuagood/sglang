@@ -44,5 +44,16 @@ def main(res_dir: str) -> None:
             (pub / "logs" / f.name).write_text(scrub(f.read_text(errors="replace")))
 
 
+def verdict(res_dir: str) -> int:
+    """Exit non-zero if any step failed, so the badge shows the state of the line under test."""
+    p = pathlib.Path(res_dir) / "result.json"
+    steps = json.loads(p.read_text()).get("steps", {}) if p.exists() else {"result": {"status": "fail"}}
+    failed = [k for k, v in steps.items() if v.get("status") == "fail"]
+    print("failed steps: " + (", ".join(failed) if failed else "none"))
+    return 1 if failed else 0
+
+
 if __name__ == "__main__":
+    if sys.argv[1] == "--verdict":
+        sys.exit(verdict(sys.argv[2]))
     main(sys.argv[1])
