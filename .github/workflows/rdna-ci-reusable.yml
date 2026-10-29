@@ -16,9 +16,9 @@ jobs:
     if: github.repository == 'vivienfanghuagood/sglang'
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
-        arch: [gfx1201]
+        arch: [gfx1201, gfx1100]
     runs-on: [self-hosted, sglang-rdna, "${{ matrix.arch }}"]
     timeout-minutes: 90
     name: ${{ matrix.arch }} / ${{ inputs.line }}

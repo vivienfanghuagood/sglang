@@ -1,6 +1,6 @@
 # Radeon (RDNA) CI for SGLang
 
-| line | gfx1201 (RDNA4) |
+| line | gfx1201 (RDNA4) and gfx1100 (RDNA3), one job each |
 |---|---|
 | upstream `main` | [![main](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-main.yml/badge.svg?branch=rdna-ci)](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-main.yml) |
 | upstream `amd_march` | [![amd_march](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-amd-march.yml/badge.svg?branch=rdna-ci)](https://github.com/vivienfanghuagood/sglang/actions/workflows/rdna-ci-amd-march.yml) |
@@ -15,7 +15,7 @@ This branch only holds a daily test of upstream [sgl-project/sglang](https://git
 | arch | hardware class |
 |---|---|
 | gfx1201 | RDNA4 |
-| gfx1100 | RDNA3, W7900-class (being added) |
+| gfx1100 | RDNA3, W7900-class. This host has no general internet access, so the job runs in a pre-provisioned ROCm 7.2 / torch 2.13 environment (PyPI only) rather than the stock image, and is skipped when no GPU is idle. |
 
 Three lines are tested on each arch, reported separately:
 
