@@ -27,7 +27,10 @@ _is_hip = is_hip()
 
 
 if _is_hip:
-    from aiter.ops.shuffle import shuffle_weight
+    try:
+        from aiter.ops.shuffle import shuffle_weight
+    except ImportError:
+        pass
 
     ON_GFX950 = "gfx950" in torch.cuda.get_device_properties("cuda").gcnArchName
 

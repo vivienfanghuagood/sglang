@@ -160,19 +160,24 @@ def _dequant_mxfp4_to_bf16(
     return w.to(torch.bfloat16)
 
 
+_aiter_mxfp4_import_error = None
 if _is_hip:
-    from aiter import gemm_a4w4 as _gemm_a4w4_orig
-    from aiter import per_1x32_f4_quant_hip as _per_1x32_f4_quant_hip_orig
-    from aiter.ops.shuffle import shuffle_weight
-    from aiter.ops.triton.gemm.fused.fused_gemm_afp4wfp4_split_cat import (
-        fused_gemm_afp4wfp4_split_cat as _fused_gemm_afp4wfp4_split_cat_orig,
-    )
-    from aiter.ops.triton.gemm_afp4wfp4 import gemm_afp4wfp4 as _gemm_afp4wfp4_orig
-    from aiter.ops.triton.gemm_afp4wfp4_pre_quant_atomic import (
-        gemm_afp4wfp4_pre_quant as _gemm_afp4wfp4_pre_quant_orig,
-    )
-    from aiter.ops.triton.quant import dynamic_mxfp4_quant as _dynamic_mxfp4_quant_orig
+    try:
+        from aiter import gemm_a4w4 as _gemm_a4w4_orig
+        from aiter import per_1x32_f4_quant_hip as _per_1x32_f4_quant_hip_orig
+        from aiter.ops.shuffle import shuffle_weight
+        from aiter.ops.triton.gemm.fused.fused_gemm_afp4wfp4_split_cat import (
+            fused_gemm_afp4wfp4_split_cat as _fused_gemm_afp4wfp4_split_cat_orig,
+        )
+        from aiter.ops.triton.gemm_afp4wfp4 import gemm_afp4wfp4 as _gemm_afp4wfp4_orig
+        from aiter.ops.triton.gemm_afp4wfp4_pre_quant_atomic import (
+            gemm_afp4wfp4_pre_quant as _gemm_afp4wfp4_pre_quant_orig,
+        )
+        from aiter.ops.triton.quant import dynamic_mxfp4_quant as _dynamic_mxfp4_quant_orig
+    except ImportError as e:
+        _aiter_mxfp4_import_error = e
 
+if _is_hip and _aiter_mxfp4_import_error is None:
     def _aiter_gemm_afp4wfp4(
         x: torch.Tensor,
         w: torch.Tensor,
