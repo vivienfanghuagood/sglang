@@ -32,7 +32,8 @@ jobs:
           LINE: ${{ inputs.line }}
         run: |
           export RDNA_CI_RESULT_DIR="$RUNNER_TEMP/result"
-          "$RDNA_CI_RUN" "$LINE"
+          set -o pipefail
+          "$RDNA_CI_RUN" "$LINE" 2>&1 | python3 ci/scrub.py
       - name: Report
         if: always()
         run: python3 ci/report.py "$RUNNER_TEMP/result" >> "$GITHUB_STEP_SUMMARY"

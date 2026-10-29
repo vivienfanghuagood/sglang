@@ -34,7 +34,7 @@ def main(res_dir: str) -> None:
     for k, v in result.get("steps", {}).items():
         print(f"| {k} | {icon.get(v['status'], v['status'])} | {scrub(v.get('detail', ''))} |")
     pub = res / "public"
-    pub.mkdir(exist_ok=True)
+    pub.mkdir(parents=True, exist_ok=True)
     for name in ("meta.json", "result.json"):
         if (res / name).exists():
             (pub / name).write_text(scrub((res / name).read_text()))
