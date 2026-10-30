@@ -1,11 +1,10 @@
 name: rdna-ci amd_march-plus-prs
 
 # Daily RDNA smoke test of upstream sglang (amd_march-plus-prs) on self-hosted Radeon runners.
-# Only scheduled and manual runs: no pull_request, pull_request_target or issue_comment
-# triggers, so code from outside this fork never reaches the runners.
+# Manual runs only, dispatched daily at a fixed time by the runner owner. There is no schedule,
+# pull_request, pull_request_target or issue_comment trigger, so code from outside this fork
+# never reaches the runners.
 on:
-  schedule:
-    - cron: "0 20 * * *"
   workflow_dispatch:
 
 permissions:

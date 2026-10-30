@@ -10,7 +10,7 @@ A badge is red when any step of that line fails: the kernel build, a kernel test
 
 This branch only holds a daily test of upstream [sgl-project/sglang](https://github.com/sgl-project/sglang) on Radeon GPUs, run on self-hosted runners. It's the RDNA CI shape proposed in sgl-project/sglang#46900. Results are on the Actions page of each workflow: each job's summary has a table, and its `result-*` artifact has the JSON and log tails.
 
-## What runs, every day (18:00, 19:00, 20:00 UTC)
+## What runs, every day (dispatched around 18:15, 19:15, 20:15 UTC)
 
 | arch | hardware class |
 |---|---|
@@ -40,7 +40,7 @@ A step that fails is reported, and the job carries on with what it can still run
 
 ## Isolation
 
-- The workflow is triggered only by `schedule` and `workflow_dispatch`. There is no `pull_request`, `pull_request_target` or `issue_comment` trigger, so code from outside this fork never reaches the runners.
+- The workflows are triggered only by `workflow_dispatch`, sent at fixed times by the runner owner (GitHub cron schedules on this fork fired hours late). There is no `pull_request`, `pull_request_target` or `issue_comment` trigger, so code from outside this fork never reaches the runners.
 - `permissions: contents: read`, and no secrets.
 - Runners are ephemeral (one job per registration) and registered to this repository only.
 - Each job uses a throwaway container. Models are mounted read-only, and core dumps are off.
