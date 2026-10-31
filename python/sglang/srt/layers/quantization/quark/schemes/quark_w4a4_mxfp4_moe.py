@@ -125,13 +125,17 @@ if _is_hip:
 
 OCP_MX_BLOCK_SIZE = 32
 
-# gfx1151 (Strix Halo) has neither FP4 hardware nor an AITER FP4 MoE kernel, so
-# the AITER path cannot run there: its scales are laid out for gfx950 and its
-# kernels produce garbage. Run the MoE as W4A16 instead: keep the packed MXFP4
-# weights and upcast them inside triton_kernels' matmul, with bf16 activations.
-# SGLANG_ENABLE_QUARK_MXFP4_MOE_W4A16=0 opts out.
-_is_gfx1151 = _is_hip and "gfx1151" in torch.cuda.get_device_properties(0).gcnArchName
-_use_triton_w4a16 = _is_gfx1151 and envs.SGLANG_ENABLE_QUARK_MXFP4_MOE_W4A16.get()
+# Consumer RDNA (RDNA3/3.5: gfx11xx, RDNA4: gfx1200/gfx1201) has neither FP4
+# hardware nor an AITER FP4 MoE kernel, so the AITER path cannot run there: its
+# scales are laid out for gfx950 and its kernels produce garbage. Run the MoE as
+# W4A16 instead: keep the packed MXFP4 weights and upcast them inside
+# triton_kernels' matmul, with bf16 activations. gfx1250 starts with "gfx12" but
+# is not consumer RDNA. SGLANG_ENABLE_QUARK_MXFP4_MOE_W4A16=0 opts out.
+_W4A16_ARCH_PREFIXES = ("gfx11", "gfx1200", "gfx1201")
+_is_consumer_rdna = _is_hip and torch.cuda.get_device_properties(
+    0
+).gcnArchName.startswith(_W4A16_ARCH_PREFIXES)
+_use_triton_w4a16 = _is_consumer_rdna and envs.SGLANG_ENABLE_QUARK_MXFP4_MOE_W4A16.get()
 _TRITON_W4A16_NUM_WARPS = 8
 
 
@@ -1169,7 +1173,7 @@ class QuarkW4A4MXFp4MoE(QuarkMoEScheme):
                 f"The W4A16 triton path does not support SwiGLU variants: {unsupported}"
             )
         logger.info_once(
-            "Quark MXFP4 MoE on gfx1151: no FP4 hardware, running the W4A4 MXFP4 "
+            "Quark MXFP4 MoE on consumer RDNA: no FP4 hardware, running the W4A4 MXFP4 "
             "checkpoint as W4A16 (bf16 activations, MXFP4 weights upcast in "
             "triton_kernels). Set SGLANG_ENABLE_QUARK_MXFP4_MOE_W4A16=0 to disable."
         )
