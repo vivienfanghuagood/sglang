@@ -18,7 +18,8 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        arch: [gfx1201, gfx1100]
+        # gfx1201 is paused while its runner is unavailable; restore it here.
+        arch: [gfx1100]
     runs-on: [self-hosted, sglang-rdna, "${{ matrix.arch }}"]
     timeout-minutes: 90
     name: ${{ matrix.arch }} / ${{ inputs.line }}
